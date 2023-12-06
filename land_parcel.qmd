@@ -1,0 +1,38 @@
+---
+title: "Paraguay Land Parcels"
+author: "Atahualpa Ayala Gomez"
+format: html
+editor: visual
+---
+
+## Adding Libraries and data
+
+```{r}
+library(sf)
+library(tidyverse)
+indert <- st_read("D:/emLAB/data/database/raw_data/indert.gpkg")
+```
+
+## Working with the INDERT data
+
+```{r}
+unique(indert$MZ_AGR)
+
+indert <- indert |>
+  mutate(
+    SUB_TYPE = case_when(
+      MZ_AGR %in% c('CA', 'CALLE') ~ 'street',
+      MZ_AGR %in% 'COMUNAL' ~ 'common_land', 
+      MZ_AGR %in% c('URBANO', 'URB') ~ 'urban',
+      str_detect(MZ_AGR,'^1PU') ~ 'urban',
+      str_detect(MZ_AGR,'^PU') ~ 'urban',
+      OBS %in% c( 'RESTO', 'CAMPO COMUNAL') ~ 'common_land',
+      
+      TRUE ~ 'small_farmer'
+    )
+  )
+
+st_write(indert, "D:/emLAB/data/database/raw_data/indert.gpkg", layer = "modified_indert6", driver = "GPKG")
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).
