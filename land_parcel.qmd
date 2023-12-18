@@ -1,4 +1,4 @@
----
+c---
 title: "Paraguay Land Parcels"
 author: "Atahualpa Ayala Gomez"
 format: html
@@ -10,29 +10,288 @@ editor: visual
 ```{r}
 library(sf)
 library(tidyverse)
-indert <- st_read("D:/emLAB/data/database/raw_data/indert.gpkg")
+library(dplyr)
+
+```
+
+```{r}
+vectorizada <- st_read("D:/emLAB/data/database/raw_data/3_INDERT_AGRARIAN_REFORM_LAND-20231204T234651Z-001/3_INDERT_AGRARIAN_REFORM_LAND/vectoirzadas.shp")
+
+relevadas <- st_read("D:/emLAB/data/database/raw_data/3_INDERT_AGRARIAN_REFORM_LAND-20231204T234651Z-001/3_INDERT_AGRARIAN_REFORM_LAND/relevadas.shp")
+aprovadas <- st_read("D:/emLAB/data/database/raw_data/3_INDERT_AGRARIAN_REFORM_LAND-20231204T234651Z-001/3_INDERT_AGRARIAN_REFORM_LAND/aprovadas.shp")
+```
+
+```{r}
+lista_colonias <- data.frame(unique(vectorizada$BARLO_DESC))
+
+colonias_tabla <-  vectorizada|>
+  mutate(DPTO_DESC = toupper(DPTO_DESC),
+         LOTE_AGR = toupper(LOTE_AGR),
+         OBS = toupper(OBS),
+         DIST_DESC = toupper(DIST_DESC),
+         BARLO_DESC = toupper(BARLO_DESC),
+         COL_DESC = toupper(COL_DESC))
+
+
+# Remove double spaces and replace with single space
+colonias_tabla$COL_DESC <- gsub("  ", " ", colonias_tabla$COL_DESC)
+
+# Remove spaces and replace with "-"
+colonias_tabla$COL_DESC <- gsub(" ", "_", colonias_tabla$COL_DESC)
+
+# Remove points
+colonias_tabla$COL_DESC  <- gsub("\\.", "", colonias_tabla$COL_DESC)
+
+# You can add more cleaning operations as needed
+
+# For example, remove other unwanted characters
+#df$text_column <- gsub("[^A-Za-z0-9-]", "", df$text_column)
+
+# Remove leading and trailing whitespaces
+#df$text_column <- trimws(df$text_column)
+
+colonias_resumen <- colonias_tabla%>%
+  group_by(COL_DESC) %>%
+  summarize(count = n(),
+            All_DIST_DESC = paste(unique(DIST_DESC), collapse = ", "),
+            FIRST_DPTO  = first(DPTO),
+            FIRST_DPTO_DEST = first(DPTO_DESC))
+
+merged_colonias <- colonias_resumen |>
+  st_union(by = "COL_DESC")
+
+df_colonias <- st_as_sf(merged_colonias)|>
+  st_drop_geometry()  # Eliminar la geometría, ya que no la necesitamos aquí
+
+
+# Seleccionar una fila aleatoria por cada "DPTO"
+muestra_por_dpto <- df_colonias %>%
+  group_by(FIRST_DPTO) %>%
+  sample_n(1) %>%
+  st_as_sf() 
+
+#st_write(colonias_resumen, "D:/emLAB/data/database/raw_data/indert.gpkg", layer = "colonias", driver = "GPKG")
+```
+```{r}
+
+set.seed(345)
+colonias_dpto <- st_read( "D:/emLAB/n.shp")
+
+CONCEPCION <- colonias_dpto|>
+  subset(nom_dpto == "CONCEPCION" )|>
+  sample_n(1, replace = FALSE)
+  
+SAN_PEDRO <- colonias_dpto|>
+  subset(nom_dpto == "SAN PEDRO" )|>
+  sample_n(1, replace = FALSE)
+
+CORDILLERA <- colonias_dpto|>
+  subset(nom_dpto == "CORDILLERA" )|>
+  sample_n(1, replace = FALSE)
+  
+GUAIRA <- colonias_dpto|>
+  subset(nom_dpto == "GUAIRA" )|>
+  sample_n(1, replace = FALSE)
+
+CAAGUAZU <- colonias_dpto|>
+  subset(nom_dpto == "CAAGUAZU" )|>
+  sample_n(1, replace = FALSE)
+
+CAAZAPA <- colonias_dpto|>
+  subset(nom_dpto == "CAAZAPA" )|>
+  sample_n(1, replace = FALSE)
+
+ITAPUA <- colonias_dpto|>
+  subset(nom_dpto == "ITAPUA" )|>
+  sample_n(1, replace = FALSE)
+
+MISIONES <- colonias_dpto|>
+  subset(nom_dpto == "MISIONES" )|>
+  sample_n(1, replace = FALSE)
+
+PARAGUARI <- colonias_dpto|>
+  subset(nom_dpto == "PARAGUARI" )|>
+  sample_n(1, replace = FALSE)
+
+CANINDEYU <- colonias_dpto|>
+  subset(nom_dpto == "CANINDEYU" )|>
+  sample_n(1, replace = FALSE)
+
+AMAMBAY <- colonias_dpto|>
+  subset(nom_dpto == "AMAMBAY" )|>
+  sample_n(1, replace = FALSE)
+
+NEEMBUCU <- colonias_dpto|>
+  subset(nom_dpto == "ÑEEMBUCU" )|>
+  sample_n(1, replace = FALSE)
+
+ALTO_PARANA <- colonias_dpto|>
+  subset(nom_dpto == "ALTO PARANA" )|>
+  sample_n(1, replace = FALSE)
+
+
+
+SAMPLE_COLONIAS <- bind_rows(CONCEPCION,SAN_PEDRO,CORDILLERA,GUAIRA, CAAGUAZU,CAAZAPA, ITAPUA, MISIONES, PARAGUARI, CANINDEYU, AMAMBAY, NEEMBUCU, ALTO_PARANA)
+
+
+
+st_write(SAMPLE_COLONIAS, "D:/emLAB/data/database/raw_data/SAMPLE_uno.shp")
+```
+
+```{r}
+set.seed(123)
+colonias_dpto <- st_read("D:/emLAB/indertcol.shp")
+
+department_names <- c("CONCEPCION", "SAN PEDRO", "CORDILLERA", "GUAIRA",
+                       "CAAGUAZU", "CAAZAPA", "ITAPUA", "MISIONES",
+                       "PARAGUARI", "CANINDEYU", "AMAMBAY", "ÑEEMBUCU",
+                       "ALTO PARANA", "CENTRAL")
+
+department_samples <- list()
+
+for (dept in department_names) {
+  department_samples[[dept]] <- colonias_dpto %>%
+    filter(nom_dpto == dept) %>%
+    sample_n(1, replace = FALSE)
+}
+
+
+write.csv(SAMPLE_COLONIAS,"D:/emLAB/SAMPLE_COLONIAS.csv" )
+# Now, you can access the samples using department_samples$CONCEPCION, department_samples$SAN_PEDRO, etc.
+
+```
+
+
+
+
+
+
+
+
+```{r}
+
+
+
+
+
+
+# select columns and unificate names of the columns
+vectorizada <- mutate(vectorizada,
+                      PK = row_number())|>
+  select(PK,COL_DESC,MZ_AGR, LOTE_AGR,OBS,Shape_Area)
+
+relevadas <- mutate(relevadas,
+                      PK = row_number())|>
+  select(PK,COL_DESC,MZ_AGR, LOTE_AGR,OBS,Shape_Area)
+
+aprovadas <- mutate(aprovadas,
+                      PK = row_number())|>
+  select(PK,COL_DESC,MZ_AGR, LOTE_AGR,OBS,Shape_Area)
+
+# Realizar la selección por ubicación entre A y B
+intersection_result <- st_intersection(vectorizada, relevadas)
+
+# Obtener los IDs de los polígonos que se solapan
+overlapping_ids <- intersection_result$ID
+
+# Conservar solo los polígonos de B que no se solapan con A
+B_no_overlap <- relevadas[!(relevadas$ID %in% overlapping_ids), ]
+
+
+
+#list of the colinias relvdas 
+valores_relevadas <-unique(relevadas$COL_DESC)
+
+colonias_vectorizadas <- vectorizada[!(vectorizada$COL_DESC %in% valores_relevadas),]
+
+valores_aprovadas <- unique(aprovadas$COL_DESC)
+
+colonias_relevadas <- relevadas[!(relevadas$COL_DESC %in% valores_aprovadas),]
+
+
+indert <- rbind(aprovadas, colonias_vectorizadas, colonias_relevadas )
+
+```
+
+```{r}
+#import indert dabase
+#indert <- st_read("D:/emLAB/data/database/raw_data/indert.gpkg")
+#Convert all field in the dataframe to uppercase
+
+
+indert <- indert |> 
+  mutate(MZ_AGR = toupper(MZ_AGR),
+         LOTE_AGR = toupper(LOTE_AGR),
+         OBS = toupper(OBS))
 ```
 
 ## Working with the INDERT data
 
 ```{r}
-unique(indert$MZ_AGR)
+#Check the unique names 
+
+MZ_AGR <- data.frame(unique(indert$MZ_AGR))
+LOTE_AGR<- data.frame(unique(indert$LOTE_AGR))
+OBS<- data.frame(unique(indert$OBS))
+
 
 indert <- indert |>
   mutate(
     SUB_TYPE = case_when(
-      MZ_AGR %in% c('CA', 'CALLE') ~ 'street',
+     
+      SUP_SIG_M2 > 0 & MZ_AGR =='CA' ~ 'street',
+      SUP_SIG_M2 > 0 & MZ_AGR == 'CALLE' ~ 'street',
       MZ_AGR %in% 'COMUNAL' ~ 'common_land', 
-      MZ_AGR %in% c('URBANO', 'URB') ~ 'urban',
-      str_detect(MZ_AGR,'^1PU') ~ 'urban',
+      MZ_AGR %in% c('R2RESERVA', 'RESERVA') ~ 'reserve',
+      MZ_AGR %in% 'INDI' ~ 'indigenous_land',             
+      MZ_AGR %in% c('URBANO', 'URB', 'PLANTA URBANA', 'ESPACIO', 'ESCUELA', 'CENTRO', 'CAPILLA', 'IGLESIA', 'ANDE', 'JUNTA') ~ 'urban',
+      str_detect(MZ_AGR,'^A_PU') ~ 'urban',
       str_detect(MZ_AGR,'^PU') ~ 'urban',
-      OBS %in% c( 'RESTO', 'CAMPO COMUNAL') ~ 'common_land',
+      
+      # for LOTE_AGR
+      LOTE_AGR %in% c('CA', 'CALLE', 'RUTA', 'PUBLICA', 'CAMINO') ~ 'street',
+      LOTE_AGR %in% c('ESTERO', 'EXTRAPOLIGONAL', 'EMBALSE', 'CURSO', 'CANAL', 'FORESTAL') ~ 'reserve',
+      LOTE_AGR %in% 'JUNTA' ~ 'reserve', 
+      str_detect(LOTE_AGR,'^1PU') ~ 'urban',
+      str_detect(LOTE_AGR,'^PU') ~ 'urban',
+      
+      # for OBS
+      OBS %in% c('CALLE','CAMINO') ~ 'street', 
+      OBS %in% c('RESERVA', 'CERRO', 'ESTERO', 'MONTE' ) ~ 'reserve',
+      OBS %in% c('CAMPO COMUNAL', 'COMUNAL')  ~ 'common_land',
+      OBS %in% c('TANQUE', 'CAPILLA', 'JUNTA', 'PU', 'URBANO', 'ESPACIO PUBLICO', 'IGLESIA', 'ESCUELA', 'CEMENTERIO', 'PLAZA', 'CENTRO', 'PLANTA URBANA', 'COMITE', 'MINISTERIO', 'COLEGIO', 'POZO') ~ 'urban',
+      str_detect(OBS,'^1PU') ~ 'urban',
+      str_detect(OBS,'^PU') ~ 'urban',
+      OBS %in% 'CAMPO COMUNAL' ~ 'common_land',
+      
+       SUP_SIG_M2 < 1000 & MZ_AGR != c( 'CA', 'CALLE')  &  LOTE_AGR != c('CA', 'CALLE', 'RUTA', 'PUBLICA', 'CAMINO')~ 'urban', 
+  
       
       TRUE ~ 'small_farmer'
     )
   )
-
-st_write(indert, "D:/emLAB/data/database/raw_data/indert.gpkg", layer = "modified_indert6", driver = "GPKG")
+st_write(indert, "D:/emLAB/data/database/raw_data/indert.gpkg", layer = "modified_indert15", driver = "GPKG")
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+```{r}
+
+indert <- indert |>
+  mutate(
+    SUB_TYPE = case_when(
+      #SUP_SIG_M2 < 4000  ~ 'urban',
+      #SUP_SIG_M2 < 4000  ~ 'urban',
+      MZ_AGR =='CA' ~ 'street',
+      MZ_AGR == 'CALLE' ~ 'street',
+      MZ_AGR =='COMUNAL' ~ 'common_land', 
+      MZ_AGR == c ('R2RESERVA', 'RESERVA') ~ 'reserve',
+      MZ_AGR == 'INDI' ~ 'indigenous_land',             
+      MZ_AGR == c('URBANO', 'URB', 'PLANTA URBANA', 'ESPACIO', 'ESCUELA', 'CENTRO', 'CAPILLA', 'IGLESIA', 'ANDE', 'JUNTA') ~ 'urban',
+      str_detect(MZ_AGR,'^A_PU') ~ 'urban',
+      str_detect(MZ_AGR,'^PU') ~ 'urban',
+      
+      
+      TRUE ~ 'small_farmer'
+    )
+  )
+st_write(indert, "D:/emLAB/data/database/raw_data/indert.gpkg", layer = "modified_indert4", driver = "GPKG")
+```
